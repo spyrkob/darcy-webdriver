@@ -1,6 +1,5 @@
 package com.redhat.darcy.jetty.webdriver.elements;
 
-import com.redhat.synq.Synq;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -10,7 +9,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.temporal.ChronoUnit;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
@@ -32,15 +32,24 @@ public class JettyServer extends ExternalResource {
             }
         });
 
-        // the server needs to be running before we can do any testing
-        Synq.after(() -> {
+        // jetty needs to be started in a separate thread before we can do any testing
+        startJettyThread();
+    }
+
+    private void startJettyThread() throws InterruptedException {
+        CountDownLatch isJettyStarted = new CountDownLatch(1);
+
+        new Thread(() -> {
             try {
                 server.start();
+                isJettyStarted.countDown();
             } catch (Exception e) {
-                //TODO: handle this :)
-                e.printStackTrace();
+                // we couldn't start Jetty - no point in going further with tests
+                throw new RuntimeException("Failed to start Jetty server", e);
             }
-        }).expect(server::isStarted).waitUpTo(5, ChronoUnit.SECONDS); // TODO: would CountDownLatch be better?
+        }).start();
+
+        isJettyStarted.await(10, TimeUnit.SECONDS); // wait until jetty is up
     }
 
     @Override
