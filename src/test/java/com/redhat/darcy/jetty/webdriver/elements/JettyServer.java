@@ -2,6 +2,7 @@ package com.redhat.darcy.jetty.webdriver.elements;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.junit.rules.ExternalResource;
 
@@ -17,8 +18,8 @@ import java.util.function.Supplier;
  * Created by spyrkob on 20/11/2014.
  */
 public class JettyServer extends ExternalResource {
-    //TODO: fallback to different port if 8080 is taken
-    private final Server server = new Server(8080);
+    private final Server server = new Server(0);
+    private int connectorPort;
 
     protected Supplier<String> htmlContent;
 
@@ -34,6 +35,8 @@ public class JettyServer extends ExternalResource {
 
         // jetty needs to be started in a separate thread before we can do any testing
         startJettyThread();
+
+        connectorPort = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
     }
 
     private void startJettyThread() throws InterruptedException {
@@ -73,6 +76,6 @@ public class JettyServer extends ExternalResource {
     }
 
     public String url(String path) {
-        return "http://localhost:8080" + path;
+        return "http://localhost:" + connectorPort + path;
     }
 }
